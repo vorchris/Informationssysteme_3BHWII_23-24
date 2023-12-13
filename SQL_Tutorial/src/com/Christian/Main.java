@@ -2,7 +2,6 @@ package com.Christian;
 
 import java.sql.*;
 import java.util.Random;
-import java.util.StringJoiner;
 
 public class Main {
     private static final String URL = "jdbc:mysql://localhost/vorhofer?useTimezone=true&serverTimezone=UTC";
