@@ -1,9 +1,11 @@
 CREATE TABLE IF NOT EXISTS customers (customerId INT AUTO_INCREMENT, name CHAR(60), email CHAR(60), PRIMARY KEY (customerId));
     INSERT INTO customers (name, email) VALUES ("bla", "bla@gmail.com");
     SELECT * FROM customers;
+
 CREATE TABLE IF NOT EXISTS artikles (artikelId INT AUTO_INCREMENT, name CHAR(60), price decimal(10,2), PRIMARY KEY (artikelId));
     INSERT INTO artikles (name, price) VALUES ("BLA", 1.12);
     SELECT * FROM artikles;
+
 CREATE TABLE IF NOT EXISTS orders (orderId INT AUTO_INCREMENT, customerId int NOT NULL, artikelId int NOT NULL, amount int NOT NULL, PRIMARY KEY (orderId), FOREIGN KEY(customerId) REFERENCES customers(customerId), FOREIGN KEY(artikelId) REFERENCES artikles(artikelId));
     INSERT INTO orders (customerId, artikelId, amount) VALUES (1, 1, 2);
     SELECT
@@ -17,3 +19,5 @@ CREATE TABLE IF NOT EXISTS orders (orderId INT AUTO_INCREMENT, customerId int NO
         orders o
         JOIN customers c ON o.customerId = c.customerId
         JOIN artikles a ON o.artikelId = a.artikelId;
+
+CREATE TABLE IF NOT EXISTS lager (lagerId INT AUTO_INCREMENT, artikelId int NOT NULL, amount int NOT NULL, PRIMARY KEY (lagerId), FOREIGN KEY(artikelId) REFERENCES artikles(artikelId));
