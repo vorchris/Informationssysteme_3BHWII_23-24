@@ -1,6 +1,7 @@
 package com.Christian;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 
 public class DatabaseHelper{
     private final String URL = "jdbc:mysql://localhost/bestellsystem?useTimezone=true&serverTimezone=UTC";
@@ -89,16 +90,36 @@ public class DatabaseHelper{
 
     static class Bestellungen {
         static {
-            DatabaseHelper.execute("CREATE TABLE IF NOT EXISTS orders (orderId INT AUTO_INCREMENT, customerId int NOT NULL, artikelId int NOT NULL, amount int NOT NULL, PRIMARY KEY (orderId), FOREIGN KEY(customerId) REFERENCES customers(customerId), FOREIGN KEY(artikelId) REFERENCES artikles(artikelId));");
+            DatabaseHelper.execute("CREATE TABLE IF NOT EXISTS orders (\n" +
+                    "    orderId INT AUTO_INCREMENT, \n" +
+                    "    customerId INT NOT NULL, \n" +
+                    "    artikelId INT NOT NULL, \n" +
+                    "    amount INT NOT NULL, \n" +
+                    "    orderDate DATETIME, \n" +
+                    "    PRIMARY KEY (orderId), \n" +
+                    "    FOREIGN KEY (customerId) REFERENCES customers(customerId), \n" +
+                    "    FOREIGN KEY (artikelId) REFERENCES artikles(artikelId)\n" +
+                    ");\n");
         }
+
         public static void addBestellung(int customerId, int artikelId, int amount){
             if(DatabaseHelper.Lager.getLagerbestand(artikelId) >= amount) {
-                DatabaseHelper.execute("INSERT INTO orders (customerId, artikelId, amount) VALUES (\"" + customerId + "\", \"" + artikelId + "\", \"" + amount + "\");");
+                LocalDateTime now = LocalDateTime.now();
+                Timestamp sqlTimestamp = Timestamp.valueOf(now);
+
+                DatabaseHelper.execute("INSERT INTO orders (customerId, artikelId, amount, orderDate) VALUES (" +
+                        "\"" + customerId + "\", " +
+                        "\"" + artikelId + "\", " +
+                        "\"" + amount + "\", '" +
+                        sqlTimestamp + "');");
+
                 DatabaseHelper.Lager.updateAmount(artikelId, DatabaseHelper.Lager.getLagerbestand(artikelId) - amount);
             }
-            else
+            else {
                 System.out.println("Nicht genug Artikel auf Lager! (Lagerbestand: " + DatabaseHelper.Lager.getLagerbestand(artikelId) + ")");
+            }
         }
+
         public static ResultSet showBestellungen(){
             return DatabaseHelper.executeQuery("SELECT \n" +
                     "    o.orderId,\n" +
@@ -106,7 +127,8 @@ public class DatabaseHelper{
                     "    c.email,\n" +
                     "    a.name AS artikelName,\n" +
                     "    a.price,\n" +
-                    "    o.amount\n" +
+                    "    o.amount,\n" +
+                    "    o.orderDate\n" + // Hinzugefügtes Feld für das Bestelldatum
                     "FROM \n" +
                     "    orders o\n" +
                     "    JOIN customers c ON o.customerId = c.customerId\n" +
@@ -116,19 +138,41 @@ public class DatabaseHelper{
             DatabaseHelper.execute("DELETE FROM orders WHERE orderId = " + id + ";");
         }
         public static void updateBestellung(int id, int customerId, int artikelId, int amount){
-            DatabaseHelper.execute("UPDATE orders SET customerId = \"" + customerId + "\", artikelId = \"" + artikelId + "\", amount = \"" + amount + "\" WHERE orderId = " + id + ";");
+            LocalDateTime now = LocalDateTime.now();
+            Timestamp sqlTimestamp = Timestamp.valueOf(now);
+
+            DatabaseHelper.execute("UPDATE orders SET customerId = \"" + customerId +
+                    "\", artikelId = \"" + artikelId +
+                    "\", amount = \"" + amount +
+                    "\", orderDate = \"" + sqlTimestamp +
+                    "\" WHERE orderId = " + id + ";");
         }
     }
     static class Artikel {
         static {
-            DatabaseHelper.execute("CREATE TABLE IF NOT EXISTS arikles (id INT AUTO_INCREMENT, name CHAR(60), price decimal(10,2), PRIMARY KEY (id));");
+            DatabaseHelper.execute("CREATE TABLE IF NOT EXISTS artikles (" +
+                    "id INT AUTO_INCREMENT, " +
+                    "name CHAR(60), " +
+                    "price DECIMAL(10,2), " +
+                    "lastRestock DATETIME, " +
+                    "PRIMARY KEY (id));");
         }
 
         public static void addArtikel(String name, double price, int amount) {
-            DatabaseHelper.execute("INSERT INTO artikles (name, price) VALUES (\"" + name + "\", \"" + (double) (Math.round(price * 100) / 100) + "\");");
+            LocalDateTime now = LocalDateTime.now();
+            Timestamp sqlTimestamp = Timestamp.valueOf(now);
+
+            DatabaseHelper.execute("INSERT INTO artikles (name, price, lastRestock) VALUES (\"" +
+                    name + "\", \"" +
+                    (double) (Math.round(price * 100) / 100) + "\", \"" +
+                    sqlTimestamp + "\");");
+
             try {
-                DatabaseHelper.Lager.addLager(DatabaseHelper.executeQuery("SELECT artikelId FROM artikles WHERE name = \"" + name + "\";").getInt(0), amount);
-            }catch (SQLException e){
+                ResultSet rs = DatabaseHelper.executeQuery("SELECT artikelId FROM artikles WHERE name = \"" + name + "\";");
+                if (rs.next()) {
+                    DatabaseHelper.Lager.addLager(rs.getInt(1), amount);
+                }
+            } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
@@ -137,13 +181,21 @@ public class DatabaseHelper{
             return DatabaseHelper.executeQuery("SELECT * FROM artikles;");
         }
 
+
         public static void deleteArtikel(int id) {
             DatabaseHelper.execute("DELETE FROM artikles WHERE artikelId = " + id + ";");
         }
 
         public static void updateArtikel(int id, String name, double price) {
-            DatabaseHelper.execute("UPDATE artikles SET name = \"" + name + "\", price = \"" + (double) (Math.round(price * 100) / 100) + "\" WHERE artikelId = " + id + ";");
+            LocalDateTime now = LocalDateTime.now();
+            Timestamp sqlTimestamp = Timestamp.valueOf(now);
+
+            DatabaseHelper.execute("UPDATE artikles SET name = \"" +
+                    name + "\", price = \"" +
+                    (double) (Math.round(price * 100) / 100) + "\", lastRestock = \"" +
+                    sqlTimestamp + "\" WHERE artikelId = " + id + ";");
         }
+
     }
 
     static class Kunden {
